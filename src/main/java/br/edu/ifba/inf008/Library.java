@@ -3,6 +3,7 @@ import java.io.Serializable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import br.edu.ifba.inf008.models.Book;
 
@@ -18,7 +19,7 @@ public class Library implements Serializable{
 
     public List<Book> searchForBooks(String title){
         return books.stream()
-            .filter(b -> b.getTitle().contains(title))
-            .toList();
+            .filter(b -> b.getTitle().toLowerCase().contains(title.toLowerCase()))
+            .collect(Collectors.toList());
     }
 }
