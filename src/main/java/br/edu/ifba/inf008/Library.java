@@ -12,7 +12,10 @@ public class Library implements Serializable{
 
     public void addBook(Book book) throws Exception{
         if(books.stream().anyMatch(b -> b.getIsbn().equals(book.getIsbn()))){
-            throw new Exception("Erro: O ISBN inserido já existe.");
+            throw new Exception("ISBN already exists.");
+        }
+        if(UserManager.currentUser == null){
+            throw new Exception("Login necessary.");
         }
         books.add(book);
     }

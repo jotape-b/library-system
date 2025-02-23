@@ -1,6 +1,7 @@
 package br.edu.ifba.inf008;
 
 import br.edu.ifba.inf008.models.Book;
+import br.edu.ifba.inf008.models.User;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -14,6 +15,7 @@ import java.util.stream.Collectors;
 
 public class LibraryApp extends Application {
     private Library library = new Library();
+    private UserManager userManager = new UserManager();
     private static final String DATA_FILE = "library.ser";
     private Stage primaryStage;
 
@@ -25,46 +27,56 @@ public class LibraryApp extends Application {
         Scene registerScene = createRegisterScene();
         Scene mainAppScene = createMainAppScene();
 
-        Button switchToMainApp = new Button("Ir para Buscar Livros");
+        Button switchToMainApp = new Button("Go To Library Screen");
         switchToMainApp.setOnAction(e -> primaryStage.setScene(mainAppScene));
 
-        Button switchToRegister = new Button("Ir para Adicionar Livro");
+        Button switchToRegister = new Button("Go To Administration Screen");
         switchToRegister.setOnAction(e -> primaryStage.setScene(registerScene));
 
         ((VBox) registerScene.getRoot()).getChildren().add(switchToMainApp);
         ((VBox) mainAppScene.getRoot()).getChildren().add(switchToRegister);
 
-        primaryStage.setTitle("Biblioteca");
+        primaryStage.setTitle("Library");
         primaryStage.setScene(registerScene);
         primaryStage.show();
     }
 
     private Scene createRegisterScene() {
         TabPane tabPane = new TabPane();
-        Tab tab = new Tab("Adicionar Livro", createRegisterPane());
+        Tab tab = new Tab("Add Book", createBookRegisterPane());
         tab.setClosable(false);
         tabPane.getTabs().add(tab);
+
+        Tab tab2 = new Tab("Add User", createUserRegisterPane());
+        tab2.setClosable(false);
+        tabPane.getTabs().add(tab2);
+
+        Tab tab3 = new Tab("Login as User", createUserLoginPane());
+        tab3.setClosable(false);
+        tabPane.getTabs().add(tab3);
+
         return new Scene(new VBox(tabPane), 600, 400);
     }
 
     private Scene createMainAppScene() {
         TabPane tabPane = new TabPane();
-        Tab tab = new Tab("Buscar Livros", createMainAppPane());
+        Tab tab = new Tab("Search For Books", createBookSearchPane());
         tab.setClosable(false);
         tabPane.getTabs().add(tab);
+
         return new Scene(new VBox(tabPane), 600, 400);
     }
 
-    private VBox createRegisterPane() {
-        VBox addBookPane = new VBox(10);
-        addBookPane.setPadding(new Insets(10));
+    private VBox createBookRegisterPane() {
+        VBox addBookRegisterPane = new VBox(7);
+        addBookRegisterPane.setPadding(new Insets(10));
 
         TextField isbnField = new TextField();
         TextField titleField = new TextField();
         TextField authorField = new TextField();
         TextField yearField = new TextField();
         TextField genreField = new TextField();
-        Button addButton = new Button("Adicionar Livro");
+        Button addButton = new Button("Add Book");
         Label addMessage = new Label();
 
         addButton.setOnAction(e -> {
@@ -78,26 +90,54 @@ public class LibraryApp extends Application {
                 Book book = new Book(isbn, title, author, year, genre);
                 library.addBook(book);
                 saveLibrary();
-                addMessage.setText("Livro adicionado com sucesso!");
+                addMessage.setText("Book successfully added.");
             } catch (Exception ex) {
-                addMessage.setText("Erro: " + ex.getMessage());
+                addMessage.setText("Error: " + ex.getMessage());
             }
         });
 
-        addBookPane.getChildren().addAll(
+        addBookRegisterPane.getChildren().addAll(
                 new Label("ISBN:"), isbnField,
-                new Label("Título:"), titleField,
-                new Label("Autor:"), authorField,
-                new Label("Ano de Lançamento:"), yearField,
-                new Label("Gênero:"), genreField,
+                new Label("Title:"), titleField,
+                new Label("Author:"), authorField,
+                new Label("Year of Release:"), yearField,
+                new Label("Genre:"), genreField,
                 addButton, addMessage
         );
-        return addBookPane;
+        return addBookRegisterPane;
     }
 
-    private VBox createMainAppPane() {
-        VBox searchPane = new VBox(10);
-        searchPane.setPadding(new Insets(10));
+    private VBox createUserRegisterPane(){
+        VBox addUserRegisterPane = new VBox(10);
+        addUserRegisterPane.setPadding(new Insets(10));
+
+        TextField nameField = new TextField();
+        Button addButton = new Button("Add User");
+        Label addMessage = new Label();
+
+        addButton.setOnAction(e -> {
+            try{
+                String name = nameField.getText();
+
+                User user = new User(name);
+                userManager.addUser(user);
+                //Salvar aqui
+                addMessage.setText("User successfully added. " + "ID: " + user.getId());
+            } catch (Exception ex){
+                addMessage.setText("Error: " + ex.getMessage());
+            }
+        });
+
+        addUserRegisterPane.getChildren().addAll(
+            new Label("Name:"), nameField,
+            addButton, addMessage
+        );
+        return addUserRegisterPane;
+    }
+
+    private VBox createBookSearchPane() {
+        VBox bookSearchPane = new VBox(10);
+        bookSearchPane.setPadding(new Insets(10));
 
         TextField searchField = new TextField();
         Button searchButton = new Button("Buscar");
@@ -113,12 +153,47 @@ public class LibraryApp extends Application {
             }
         });
 
-        searchPane.getChildren().addAll(
-                new Label("Buscar por Título:"), searchField,
+        bookSearchPane.getChildren().addAll(
+                new Label("Search By Title:"), searchField,
                 searchButton, resultList
         );
-        return searchPane;
+        return bookSearchPane;
     }
+
+    private VBox createUserLoginPane() {
+        VBox loginPane = new VBox(10);
+        loginPane.setPadding(new Insets(10));
+    
+        TextField idField = new TextField();
+        Button loginButton = new Button("Login");
+        Label userLabel = new Label("Current User: ");
+        Label nameLabel = new Label("NULL");
+        Label addMessage = new Label();
+    
+        HBox userInfoBox = new HBox(5);
+        userInfoBox.getChildren().addAll(userLabel, nameLabel);
+    
+        loginButton.setOnAction(e -> {
+            try {
+                Integer id = Integer.parseInt(idField.getText());
+                userManager.login(id);
+                nameLabel.setText(UserManager.currentUser.getName());
+                addMessage.setText("Login successful. Welcome");
+            } catch (Exception ex) {
+                addMessage.setText("Error: " + ex.getMessage());
+            }
+        });
+    
+        loginPane.getChildren().addAll(
+            new Label("Login By Id:"), idField,
+            loginButton,
+            userInfoBox,
+            addMessage
+        );
+    
+        return loginPane;
+    }
+    
 
     private void saveLibrary() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DATA_FILE))) {
