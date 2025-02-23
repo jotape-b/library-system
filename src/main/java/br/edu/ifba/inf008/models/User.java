@@ -14,12 +14,20 @@ public class User implements Serializable{
         this.name = name;
     }
 
+    public static int getIdCounter(){
+        return idCounter;
+    }
+
     public int getId(){
         return id;
     }
 
     public String getName(){
         return name;
+    }
+
+    public static void setIdCounter(int counter) {
+        idCounter = counter;
     }
 
 }

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class LibraryApp extends Application {
     private Library library = new Library();
     private UserManager userManager = new UserManager();
-    private static final String DATA_FILE = "library.ser";
+    private static final String DATA_FILE = "library-data.txt";
     private Stage primaryStage;
 
     @Override
@@ -199,7 +199,8 @@ public class LibraryApp extends Application {
     
 
     private void saveAppData() {
-        DataHelper data = new DataHelper(library, userManager);
+        int userIdCounter = User.getIdCounter();
+        DataHelper data = new DataHelper(library, userManager, userIdCounter);
         SerializationManager.saveData(data, DATA_FILE);
     }
     
@@ -209,6 +210,7 @@ public class LibraryApp extends Application {
         if (data != null) {
             this.library = data.getLibrary();
             this.userManager = data.getUserManager();
+            User.setIdCounter(data.getUserIdCounter());
         } else {
             this.library = new Library();
             this.userManager = new UserManager();
