@@ -22,7 +22,7 @@ public class LibraryApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
-        loadLibrary();
+        loadAppData();
 
         Scene registerScene = createRegisterScene();
         Scene mainAppScene = createMainAppScene();
@@ -38,6 +38,11 @@ public class LibraryApp extends Application {
 
         primaryStage.setTitle("Library");
         primaryStage.setScene(registerScene);
+
+        primaryStage.setOnCloseRequest(event -> {
+            saveAppData();
+        });
+
         primaryStage.show();
     }
 
@@ -89,7 +94,6 @@ public class LibraryApp extends Application {
 
                 Book book = new Book(isbn, title, author, year, genre);
                 library.addBook(book);
-                saveLibrary();
                 addMessage.setText("Book successfully added.");
             } catch (Exception ex) {
                 addMessage.setText("Error: " + ex.getMessage());
@@ -121,7 +125,6 @@ public class LibraryApp extends Application {
 
                 User user = new User(name);
                 userManager.addUser(user);
-                //Salvar aqui
                 addMessage.setText("User successfully added. " + "ID: " + user.getId());
             } catch (Exception ex){
                 addMessage.setText("Error: " + ex.getMessage());
@@ -195,24 +198,23 @@ public class LibraryApp extends Application {
     }
     
 
-    private void saveLibrary() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DATA_FILE))) {
-            oos.writeObject(library);
-        } catch (IOException e) {
-            System.err.println("Erro ao salvar a biblioteca: " + e.getMessage());
-        }
+    private void saveAppData() {
+        DataHelper data = new DataHelper(library, userManager);
+        SerializationManager.saveData(data, DATA_FILE);
     }
+    
 
-    private void loadLibrary() {
-        File file = new File(DATA_FILE);
-        if (file.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                library = (Library) ois.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Erro ao carregar a biblioteca: " + e.getMessage());
-            }
+    private void loadAppData() {
+        DataHelper data = SerializationManager.loadData(DATA_FILE, DataHelper.class);
+        if (data != null) {
+            this.library = data.getLibrary();
+            this.userManager = data.getUserManager();
+        } else {
+            this.library = new Library();
+            this.userManager = new UserManager();
         }
     }
+    
 
     public static void main(String[] args) {
         launch();
