@@ -1,6 +1,7 @@
 package br.edu.ifba.inf008;
 
 import br.edu.ifba.inf008.models.Book;
+import br.edu.ifba.inf008.models.Loan;
 import br.edu.ifba.inf008.models.User;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -10,6 +11,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -144,24 +146,58 @@ public class LibraryApp extends Application {
 
         TextField searchField = new TextField();
         Button searchButton = new Button("Buscar");
-        ListView<String> resultList = new ListView<>();
+        ListView<Book> resultList = new ListView<>();
+        Button borrowButton = new Button("Borrow Selected Books");
+        Label borrowMessage = new Label();
+
+        resultList.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(Book book, boolean empty) {
+                super.updateItem(book, empty);
+                if (empty || book == null) {
+                    setText(null);
+                } else {
+                    setText(book.getTitle() + " (" + book.getIsbn() + ")");
+                }
+            }
+        });
 
         searchButton.setOnAction(e -> {
             String title = searchField.getText();
             List<Book> results = library.searchForBooks(title).stream()
                     .collect(Collectors.toList());
-            resultList.getItems().clear();
-            for (Book book : results) {
-                resultList.getItems().add(book.getTitle() + " (" + book.getIsbn() + ")");
+            resultList.getItems().setAll(results);
+        });
+
+        borrowButton.setOnAction(e -> {
+            List<Book> selectedBooks = new ArrayList<>(resultList.getSelectionModel().getSelectedItems());
+            if (UserManager.currentUser == null){
+                borrowMessage.setText("Error: Login required.");
+                return;
             }
+            if (selectedBooks.size() < 1) {
+                borrowMessage.setText("Error: No books selected.");
+                return;
+            }
+            if (selectedBooks.size() > 5) {
+                borrowMessage.setText("Error: You can only borrow up to 5 books.");
+                return;
+            }
+            Loan loan = new Loan();
+            for (Book book : selectedBooks) {
+                loan.addBookToLoan(book);
+            }
+            borrowMessage.setText("Books borrowed successfully.");
         });
 
         bookSearchPane.getChildren().addAll(
                 new Label("Search By Title:"), searchField,
-                searchButton, resultList
+                searchButton, resultList,
+                borrowButton, borrowMessage
         );
         return bookSearchPane;
     }
+
 
     private VBox createUserLoginPane() {
         VBox loginPane = new VBox(10);
