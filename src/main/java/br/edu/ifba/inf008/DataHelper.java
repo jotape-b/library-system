@@ -5,11 +5,13 @@ import java.io.Serializable;
 public class DataHelper implements Serializable {
     private Library library;
     private UserManager userManager;
+    private LoanStorage loanStorage;
     private int userIdCounter;
 
-    public DataHelper(Library library, UserManager userManager, int userIdCounter) {
+    public DataHelper(Library library, UserManager userManager, /*LoanStorage loanStorage,*/ int userIdCounter) {
         this.library = library;
         this.userManager = userManager;
+        //this.loanStorage = loanStorage;
         this.userIdCounter = userIdCounter;
     }
 
@@ -20,6 +22,10 @@ public class DataHelper implements Serializable {
     public UserManager getUserManager() {
         return userManager;
     }
+
+    /*public LoanStorage getLoanStorage(){
+        return loanStorage;
+    }*/
 
     public int getUserIdCounter() {
         return userIdCounter;

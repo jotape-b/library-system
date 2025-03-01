@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class LibraryApp extends Application {
     private Library library = new Library();
     private UserManager userManager = new UserManager();
+    private LoanStorage loanStorage = new LoanStorage();
     private static final String DATA_FILE = "library-data.txt";
     private Stage primaryStage;
 
@@ -70,6 +71,10 @@ public class LibraryApp extends Application {
         Tab tab = new Tab("Search For Books", createBookSearchPane());
         tab.setClosable(false);
         tabPane.getTabs().add(tab);
+        
+        Tab tab2 = new Tab("Borrowed Books", createLoanPane());
+        tab.setClosable(false);
+        tabPane.getTabs().add(tab2);
 
         return new Scene(new VBox(tabPane), 600, 400);
     }
@@ -140,12 +145,46 @@ public class LibraryApp extends Application {
         return addUserRegisterPane;
     }
 
+    private VBox createUserLoginPane() {
+        VBox addLoginPane = new VBox(10);
+        addLoginPane.setPadding(new Insets(10));
+    
+        TextField idField = new TextField();
+        Button loginButton = new Button("Login");
+        Label userLabel = new Label("Current User: ");
+        Label nameLabel = new Label("NULL");
+        Label addMessage = new Label();
+    
+        HBox userInfoBox = new HBox(5);
+        userInfoBox.getChildren().addAll(userLabel, nameLabel);
+    
+        loginButton.setOnAction(e -> {
+            try {
+                Integer id = Integer.parseInt(idField.getText());
+                userManager.login(id);
+                nameLabel.setText(UserManager.currentUser.getName());
+                addMessage.setText("Login successful. Welcome");
+            } catch (Exception ex) {
+                addMessage.setText("Error: " + ex.getMessage());
+            }
+        });
+    
+        addLoginPane.getChildren().addAll(
+            new Label("Login By Id:"), idField,
+            loginButton,
+            userInfoBox,
+            addMessage
+        );
+    
+        return addLoginPane;
+    }
+
     private VBox createBookSearchPane() {
-        VBox bookSearchPane = new VBox(10);
-        bookSearchPane.setPadding(new Insets(10));
+        VBox searchPane = new VBox(10);
+        searchPane.setPadding(new Insets(10));
 
         TextField searchField = new TextField();
-        Button searchButton = new Button("Buscar");
+        Button searchButton = new Button("Search");
         ListView<Book> resultList = new ListView<>();
         Button borrowButton = new Button("Borrow Selected Books");
         Label borrowMessage = new Label();
@@ -171,72 +210,97 @@ public class LibraryApp extends Application {
 
         borrowButton.setOnAction(e -> {
             List<Book> selectedBooks = new ArrayList<>(resultList.getSelectionModel().getSelectedItems());
-            if (UserManager.currentUser == null){
-                borrowMessage.setText("Error: Login required.");
-                return;
-            }
-            if (selectedBooks.size() < 1) {
+            if (selectedBooks.isEmpty()) {
                 borrowMessage.setText("Error: No books selected.");
                 return;
             }
-            if (selectedBooks.size() > 5) {
-                borrowMessage.setText("Error: You can only borrow up to 5 books.");
-                return;
+
+            try {
+                Loan loan = new Loan();
+                for (Book book : selectedBooks) {
+                    loan.addBookToLoan(book);
+                }
+                userManager.registerLoan(UserManager.currentUser, loan);
+                loanStorage.storeLoan(loan);
+                borrowMessage.setText("Books borrowed successfully.");
+            } catch (Exception ex) {
+                borrowMessage.setText("Error: " + ex.getMessage());
             }
-            Loan loan = new Loan();
-            for (Book book : selectedBooks) {
-                loan.addBookToLoan(book);
-            }
-            borrowMessage.setText("Books borrowed successfully.");
         });
 
-        bookSearchPane.getChildren().addAll(
+        searchPane.getChildren().addAll(
                 new Label("Search By Title:"), searchField,
                 searchButton, resultList,
                 borrowButton, borrowMessage
         );
-        return bookSearchPane;
+        return searchPane;
     }
 
 
-    private VBox createUserLoginPane() {
-        VBox loginPane = new VBox(10);
-        loginPane.setPadding(new Insets(10));
-    
-        TextField idField = new TextField();
-        Button loginButton = new Button("Login");
-        Label userLabel = new Label("Current User: ");
-        Label nameLabel = new Label("NULL");
-        Label addMessage = new Label();
-    
-        HBox userInfoBox = new HBox(5);
-        userInfoBox.getChildren().addAll(userLabel, nameLabel);
-    
-        loginButton.setOnAction(e -> {
-            try {
-                Integer id = Integer.parseInt(idField.getText());
-                userManager.login(id);
-                nameLabel.setText(UserManager.currentUser.getName());
-                addMessage.setText("Login successful. Welcome");
-            } catch (Exception ex) {
-                addMessage.setText("Error: " + ex.getMessage());
+    private VBox createLoanPane() {
+        VBox loanPane = new VBox(10);
+        loanPane.setPadding(new Insets(10));
+
+        ListView<Book> loanListView = new ListView<>();
+        Button returnButton = new Button("Return Selected Books");
+        Label loanMessage = new Label();
+
+        loanListView.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(Book book, boolean empty) {
+                super.updateItem(book, empty);
+                if (empty || book == null) {
+                    setText(null);
+                } else {
+                    setText(book.getTitle() + " (" + book.getIsbn() + ")");
+                }
             }
         });
-    
-        loginPane.getChildren().addAll(
-            new Label("Login By Id:"), idField,
-            loginButton,
-            userInfoBox,
-            addMessage
-        );
-    
-        return loginPane;
+
+        loanPane.setOnMouseEntered(e -> {
+            if (UserManager.currentUser == null) {
+                loanListView.getItems().clear();
+                returnButton.setVisible(false);
+            } else {
+                List<Book> borrowedBooks = UserManager.currentUser.getCurrentLoanBooks();
+                loanListView.getItems().setAll(borrowedBooks);
+                returnButton.setVisible(!borrowedBooks.isEmpty());
+            }
+        });
+        
+
+        returnButton.setOnAction(e -> {
+            List<Book> selectedBooks = new ArrayList<>(loanListView.getSelectionModel().getSelectedItems());
+
+            if (selectedBooks.isEmpty()) {
+                loanMessage.setText("Error: No books selected.");
+                return;
+            }
+
+            boolean success = true;
+            for (Book book : selectedBooks) {
+                try {
+                    userManager.returnBook(UserManager.currentUser, book);
+                } catch (Exception ex) {
+                    loanMessage.setText("Error: " + ex.getMessage());
+                    success = false;
+                    break;
+                }
+            }
+
+            if (success) {
+                loanMessage.setText("Books returned successfully.");
+                loanListView.getItems().removeAll(selectedBooks);
+            }
+        });
+
+        loanPane.getChildren().addAll(new Label("Borrowed Books:"), loanListView, returnButton, loanMessage);
+        return loanPane;
     }
-    
 
     private void saveAppData() {
         int userIdCounter = User.getIdCounter();
-        DataHelper data = new DataHelper(library, userManager, userIdCounter);
+        DataHelper data = new DataHelper(library, userManager, /*loanStorage,*/ userIdCounter);
         SerializationManager.saveData(data, DATA_FILE);
     }
     
@@ -246,6 +310,7 @@ public class LibraryApp extends Application {
         if (data != null) {
             this.library = data.getLibrary();
             this.userManager = data.getUserManager();
+            //this.loanStorage = data.getLoanStorage();
             User.setIdCounter(data.getUserIdCounter());
         } else {
             this.library = new Library();

@@ -1,29 +1,58 @@
 package br.edu.ifba.inf008.models;
 
 import java.io.Serializable;
-import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 import br.edu.ifba.inf008.UserManager;
 
 public class Loan implements Serializable{
     private User borrower;
-    private Set<Book> selectedBooks;
-    private LocalDate loanDate;
+    private List<Book> selectedBooks;
+    private LocalDateTime loanDate;
 
     public Loan(){
         this.borrower = UserManager.currentUser;
-        this.loanDate = LocalDate.now();
-        this.selectedBooks = new HashSet<>();
-        System.out.println(borrower.getName() + loanDate);
+        this.loanDate = LocalDateTime.now();
+        this.selectedBooks = new ArrayList<>();
     }
     
-    public void addBookToLoan(Book book){
+    public void addBookToLoan(Book book) throws Exception{
+        if(selectedBooks.size() == 5){
+            throw new Exception("You can only borrow up to five books at a time.");
+        }
+        if(UserManager.currentUser == null){
+            throw new Exception("Login required.");
+        }
         selectedBooks.add(book);
+    }
+    
+
+    public List<Book> getSelectedBooks(){
+        return selectedBooks;
     }
 
     public User getBorrower(){
         return borrower;
+    }
+
+    public LocalDateTime getLoanDate(){
+        return loanDate;
+    }
+
+    
+    @Override
+    public int hashCode() {
+        return Objects.hash(loanDate);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Loan other = (Loan) obj;
+        return Objects.equals(loanDate, other.loanDate);
     }
 }
