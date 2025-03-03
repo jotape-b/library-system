@@ -2,7 +2,12 @@ package br.edu.ifba.inf008;
 
 import br.edu.ifba.inf008.models.Book;
 import br.edu.ifba.inf008.models.Loan;
+import br.edu.ifba.inf008.models.LoanStorage;
 import br.edu.ifba.inf008.models.User;
+import br.edu.ifba.inf008.plugins.PluginManager;
+import br.edu.ifba.inf008.plugins.ReportPlugin;
+import br.edu.ifba.inf008.plugins.impl.LoanedBooksReport;
+import br.edu.ifba.inf008.plugins.impl.OverdueBooksReport;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -22,10 +27,22 @@ public class LibraryApp extends Application {
     private static final String DATA_FILE = "library-data.txt";
     private Stage primaryStage;
 
+    private PluginManager pluginManager = new PluginManager();
+    private List<ReportPlugin> availablePlugins;
+
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         loadAppData();
+
+        try{
+            pluginManager.loadPlugins("plugins/");
+            availablePlugins = pluginManager.getPlugins();
+            System.out.println("Plugins carregados: " + availablePlugins.size()); // Adicione este log
+        }
+        catch(Exception ex){
+            System.out.println("Error: " + ex.getMessage());
+        }
 
         Scene registerScene = createRegisterScene();
         Scene mainAppScene = createMainAppScene();
@@ -75,6 +92,10 @@ public class LibraryApp extends Application {
         Tab tab2 = new Tab("Borrowed Books", createLoanPane());
         tab.setClosable(false);
         tabPane.getTabs().add(tab2);
+
+        Tab tab3 = new Tab("Reports", createReportPane());
+        tab3.setClosable(false);
+        tabPane.getTabs().add(tab3);
 
         return new Scene(new VBox(tabPane), 600, 400);
     }
@@ -180,8 +201,8 @@ public class LibraryApp extends Application {
     }
 
     private VBox createBookSearchPane() {
-        VBox searchPane = new VBox(10);
-        searchPane.setPadding(new Insets(10));
+        VBox addSearchPane = new VBox(10);
+        addSearchPane.setPadding(new Insets(10));
 
         TextField searchField = new TextField();
         Button searchButton = new Button("Search");
@@ -204,6 +225,7 @@ public class LibraryApp extends Application {
         searchButton.setOnAction(e -> {
             String title = searchField.getText();
             List<Book> results = library.searchForBooks(title).stream()
+                    .filter(b -> b.getIsAvailable() == true)
                     .collect(Collectors.toList());
             resultList.getItems().setAll(results);
         });
@@ -222,24 +244,24 @@ public class LibraryApp extends Application {
                 }
                 userManager.registerLoan(UserManager.currentUser, loan);
                 loanStorage.storeLoan(loan);
-                borrowMessage.setText("Books borrowed successfully.");
+                borrowMessage.setText("Books borrowed successfully. Date: " + loan.getLoanDate());
             } catch (Exception ex) {
                 borrowMessage.setText("Error: " + ex.getMessage());
             }
         });
 
-        searchPane.getChildren().addAll(
+        addSearchPane.getChildren().addAll(
                 new Label("Search By Title:"), searchField,
                 searchButton, resultList,
                 borrowButton, borrowMessage
         );
-        return searchPane;
+        return addSearchPane;
     }
 
 
     private VBox createLoanPane() {
-        VBox loanPane = new VBox(10);
-        loanPane.setPadding(new Insets(10));
+        VBox addLoanPane = new VBox(10);
+        addLoanPane.setPadding(new Insets(10));
 
         ListView<Book> loanListView = new ListView<>();
         Button returnButton = new Button("Return Selected Books");
@@ -257,7 +279,7 @@ public class LibraryApp extends Application {
             }
         });
 
-        loanPane.setOnMouseEntered(e -> {
+        addLoanPane.setOnMouseEntered(e -> {
             if (UserManager.currentUser == null) {
                 loanListView.getItems().clear();
                 returnButton.setVisible(false);
@@ -294,13 +316,58 @@ public class LibraryApp extends Application {
             }
         });
 
-        loanPane.getChildren().addAll(new Label("Borrowed Books:"), loanListView, returnButton, loanMessage);
-        return loanPane;
+        addLoanPane.getChildren().addAll(new Label("Borrowed Books:"), loanListView, returnButton, loanMessage);
+        return addLoanPane;
+    }
+
+    private VBox createReportPane() {
+        VBox addReportPane = new VBox(10);
+        addReportPane.setPadding(new Insets(10));
+
+        ComboBox<String> pluginComboBox = new ComboBox<>();
+        for (ReportPlugin plugin : availablePlugins) {
+            pluginComboBox.getItems().add(plugin.getPluginName());
+            System.out.println("Plugin adicionado ao ComboBox: " + plugin.getPluginName()); // Adicione este log
+        }
+
+        Button generateButton = new Button("Generate Report");
+        TextArea reportTextArea = new TextArea();
+        reportTextArea.setEditable(false);
+
+        generateButton.setOnAction(e -> {
+            String selectedPluginName = pluginComboBox.getValue();
+            if (selectedPluginName != null) {
+                ReportPlugin selectedPlugin = availablePlugins.stream()
+                        .filter(plugin -> plugin.getPluginName().equals(selectedPluginName))
+                        .findFirst()
+                        .orElse(null);
+
+                if (selectedPlugin != null) {
+                    String report = selectedPlugin.generateReport(loanStorage);
+                    reportTextArea.setText(report);
+                }
+            }
+
+            LoanedBooksReport loanedBooksReport = new LoanedBooksReport();
+            System.out.println("Relatório de livros emprestados:");
+            System.out.println(loanedBooksReport.generateReport(loanStorage));
+
+            OverdueBooksReport overdueBooksReport = new OverdueBooksReport();
+            System.out.println("Relatório de livros atrasados:");
+        System.out.println(overdueBooksReport.generateReport(loanStorage));
+        });
+
+        addReportPane.getChildren().addAll(
+                new Label("Select Report Plugin:"), pluginComboBox,
+                generateButton, new Label("Generated Report:"), reportTextArea
+        );
+
+        return addReportPane;
     }
 
     private void saveAppData() {
         int userIdCounter = User.getIdCounter();
-        DataHelper data = new DataHelper(library, userManager, /*loanStorage,*/ userIdCounter);
+        DataHelper data = new DataHelper(library, userManager, loanStorage, userIdCounter);
         SerializationManager.saveData(data, DATA_FILE);
     }
     
@@ -310,7 +377,7 @@ public class LibraryApp extends Application {
         if (data != null) {
             this.library = data.getLibrary();
             this.userManager = data.getUserManager();
-            //this.loanStorage = data.getLoanStorage();
+            this.loanStorage = data.getLoanStorage();
             User.setIdCounter(data.getUserIdCounter());
         } else {
             this.library = new Library();

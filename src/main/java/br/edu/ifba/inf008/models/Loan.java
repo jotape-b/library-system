@@ -1,6 +1,7 @@
 package br.edu.ifba.inf008.models;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,14 @@ public class Loan implements Serializable{
         if(UserManager.currentUser == null){
             throw new Exception("Login required.");
         }
+        book.setIsAvailable(false);
         selectedBooks.add(book);
+    }
+
+    public boolean isOverdue(){
+        LocalDateTime today = LocalDateTime.now();
+        long days = Duration.between(this.loanDate, today).toDays();
+        return days > 14;
     }
     
 
@@ -42,7 +50,7 @@ public class Loan implements Serializable{
         return loanDate;
     }
 
-    
+    /*
     @Override
     public int hashCode() {
         return Objects.hash(loanDate);
@@ -54,5 +62,5 @@ public class Loan implements Serializable{
         if (obj == null || getClass() != obj.getClass()) return false;
         Loan other = (Loan) obj;
         return Objects.equals(loanDate, other.loanDate);
-    }
+    }*/
 }

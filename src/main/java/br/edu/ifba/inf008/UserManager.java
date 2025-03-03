@@ -51,6 +51,7 @@ public class UserManager implements Serializable {
         }
 
         loanToModify.getSelectedBooks().remove(book);
+        book.setIsAvailable(true);
         
         if (loanToModify.getSelectedBooks().isEmpty()) {
             user.returnLoan(loanToModify);

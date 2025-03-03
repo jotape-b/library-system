@@ -1,14 +1,9 @@
-package br.edu.ifba.inf008;
-
-import br.edu.ifba.inf008.models.Loan;
-
-import java.time.LocalDateTime;
+package br.edu.ifba.inf008.models;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import br.edu.ifba.inf008.models.Loan;
-
-public class LoanStorage {
+public class LoanStorage implements Serializable{
     private List<Loan> loans = new ArrayList<>();
 
     public void storeLoan(Loan loan){
@@ -20,5 +15,9 @@ public class LoanStorage {
             throw new Exception("Loan does not exist.");
         }
         loans.remove(loan);;
+    }
+
+    public List<Loan> getLoans(){
+        return loans;
     }
 }
